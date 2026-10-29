@@ -1,6 +1,46 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useCart } from "../context/useCart";
 import "./Navbar.css";
+
+const NAVBAR_OFFSET = 90;
+const TARGET_TOLERANCE = 2;
+const CLICK_TOLERANCE = 1;
+const SECTION_ORDER = ["assistant", "discover", "shopping"];
+const DEFAULT_SECTION = "discover";
+
+const isAtPageBottom = () =>
+  window.scrollY > 0 &&
+  window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
+
+const getSectionScrollTop = (section: HTMLElement) => {
+  const maxScrollTop = Math.max(
+    0,
+    document.documentElement.scrollHeight - window.innerHeight,
+  );
+  const sectionTop = section.getBoundingClientRect().top + window.scrollY;
+  return Math.min(Math.max(sectionTop - NAVBAR_OFFSET, 0), maxScrollTop);
+};
+
+const isSectionAtOffset = (section: HTMLElement, tolerance: number) =>
+  Math.abs(section.getBoundingClientRect().top - NAVBAR_OFFSET) <= tolerance;
+
+const getActiveSection = () => {
+  if (isAtPageBottom()) {
+    return "shopping";
+  }
+
+  let current = DEFAULT_SECTION;
+  for (const id of SECTION_ORDER) {
+    const section = document.getElementById(id);
+    if (
+      section &&
+      section.getBoundingClientRect().top <= NAVBAR_OFFSET + TARGET_TOLERANCE
+    ) {
+      current = id;
+    }
+  }
+  return current;
+};
 
 const ShoppingBagIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -19,35 +59,115 @@ const UserIcon = () => (
 
 function Navbar() {
   const { cartCount } = useCart();
-  const [activeSection, setActiveSection] = useState<string>("discover");
+  const [activeSection, setActiveSection] = useState<string>(DEFAULT_SECTION);
+  const pendingSectionRef = useRef<string | null>(null);
+  const pendingScrollStartedRef = useRef(false);
 
   useEffect(() => {
-    const sections = ["discover", "assistant", "shopping"];
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setActiveSection(entry.target.id);
-          }
-        });
-      },
-      {
-        rootMargin: "-90px 0px -60% 0px",
-        threshold: [0, 0.25, 0.5, 0.75, 1],
-      }
-    );
+    let frameId = 0;
 
-    sections.forEach((id) => {
-      const element = document.getElementById(id);
-      if (element) {
-        observer.observe(element);
+    const finishPendingSection = () => {
+      const pendingSection = pendingSectionRef.current;
+      if (!pendingSection || !pendingScrollStartedRef.current) {
+        return;
       }
-    });
+
+      const target = document.getElementById(pendingSection);
+      const targetReached =
+        target !== null &&
+        (isSectionAtOffset(target, TARGET_TOLERANCE) ||
+          (pendingSection === "shopping" && isAtPageBottom()));
+
+      pendingSectionRef.current = null;
+      pendingScrollStartedRef.current = false;
+      setActiveSection(targetReached ? pendingSection : getActiveSection());
+    };
+
+    const updateActiveSection = () => {
+      const pendingSection = pendingSectionRef.current;
+      if (pendingSection) {
+        setActiveSection(pendingSection);
+        return;
+      }
+
+      setActiveSection(getActiveSection());
+    };
+
+    const handleScroll = () => {
+      if (pendingSectionRef.current) {
+        pendingScrollStartedRef.current = true;
+      }
+      if (frameId !== 0) {
+        return;
+      }
+      frameId = window.requestAnimationFrame(() => {
+        frameId = 0;
+        updateActiveSection();
+      });
+    };
+
+    const cancelPendingSection = () => {
+      pendingSectionRef.current = null;
+      pendingScrollStartedRef.current = false;
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.key === "ArrowUp" ||
+        event.key === "ArrowDown" ||
+        event.key === "PageUp" ||
+        event.key === "PageDown" ||
+        event.key === "Home" ||
+        event.key === "End" ||
+        event.key === " "
+      ) {
+        cancelPendingSection();
+      }
+    };
+
+    const handleScrollEnd = () => {
+      finishPendingSection();
+    };
+
+    updateActiveSection();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleScroll);
+    window.addEventListener("wheel", cancelPendingSection, { passive: true });
+    window.addEventListener("touchmove", cancelPendingSection, { passive: true });
+    window.addEventListener("pointerdown", cancelPendingSection, { passive: true });
+    window.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("scrollend", handleScrollEnd);
 
     return () => {
-      observer.disconnect();
+      if (frameId !== 0) {
+        window.cancelAnimationFrame(frameId);
+      }
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
+      window.removeEventListener("wheel", cancelPendingSection);
+      window.removeEventListener("touchmove", cancelPendingSection);
+      window.removeEventListener("pointerdown", cancelPendingSection);
+      window.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("scrollend", handleScrollEnd);
     };
   }, []);
+
+  const handleNavClick = (sectionId: string) => {
+    const target = document.getElementById(sectionId);
+    if (!target) {
+      return;
+    }
+
+    pendingSectionRef.current = sectionId;
+    pendingScrollStartedRef.current = false;
+    setActiveSection(sectionId);
+
+    const alreadyAtTarget =
+      Math.abs(window.scrollY - getSectionScrollTop(target)) < CLICK_TOLERANCE;
+    if (alreadyAtTarget) {
+      pendingSectionRef.current = null;
+    }
+  };
 
   return (
     <nav className="navbar">
@@ -58,13 +178,13 @@ function Navbar() {
         </div>
 
         <div className="navbar-links">
-          <a href="#discover" className={`navbar-link ${activeSection === "discover" ? "navbar-link-active" : ""}`} aria-current={activeSection === "discover" ? "page" : undefined}>Discover</a>
-          <a href="#assistant" className={`navbar-link ${activeSection === "assistant" ? "navbar-link-active" : ""}`} aria-current={activeSection === "assistant" ? "page" : undefined}>Assistant</a>
-          <a href="#shopping" className={`navbar-link ${activeSection === "shopping" ? "navbar-link-active" : ""}`} aria-current={activeSection === "shopping" ? "page" : undefined}>My Shopping</a>
+          <a href="#discover" className={`navbar-link ${activeSection === "discover" ? "navbar-link-active" : ""}`} aria-current={activeSection === "discover" ? "page" : undefined} onClick={() => handleNavClick("discover")}>Discover</a>
+          <a href="#assistant" className={`navbar-link ${activeSection === "assistant" ? "navbar-link-active" : ""}`} aria-current={activeSection === "assistant" ? "page" : undefined} onClick={() => handleNavClick("assistant")}>Assistant</a>
+          <a href="#shopping" className={`navbar-link ${activeSection === "shopping" ? "navbar-link-active" : ""}`} aria-current={activeSection === "shopping" ? "page" : undefined} onClick={() => handleNavClick("shopping")}>My Shopping</a>
         </div>
 
         <div className="navbar-actions">
-          <a href="#shopping" className="navbar-icon-btn" aria-label="Shopping bag">
+          <a href="#shopping" className="navbar-icon-btn" aria-label="Shopping bag" onClick={() => handleNavClick("shopping")}>
             <ShoppingBagIcon />
             {cartCount > 0 && <span className="navbar-cart-badge">{cartCount}</span>}
           </a>
