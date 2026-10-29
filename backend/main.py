@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field, PrivateAttr
 
 from app.catalog import get_all_products, get_product_by_id, search_products
+from app.config import settings
 from app.gemini import generate_response
 from app.paypal import (
     create_paypal_order,
@@ -23,16 +24,26 @@ app = FastAPI(
     version="1.0.0"
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
-    allow_credentials=False,
-    allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization"],
-)
+
+def _parse_cors_origins(value: str) -> list[str]:
+    return [
+        origin.strip()
+        for origin in value.split(",")
+        if origin.strip()
+    ]
+
+
+def _add_cors_middleware(target_app: FastAPI, origins: list[str]) -> None:
+    target_app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Content-Type", "Authorization"],
+    )
+
+
+_add_cors_middleware(app, _parse_cors_origins(settings.cors_allow_origins))
 
 
 class OrderRequest(BaseModel):

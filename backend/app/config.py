@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     paypal_base_url: str = "https://api-m.sandbox.paypal.com"
     frontend_return_url: str = "http://localhost:5173/?paypal=return"
     frontend_cancel_url: str = "http://localhost:5173/?paypal=cancel"
+    cors_allow_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
     gemini_api_key: str | None = None
     gemini_model: str = "gemini-3.5-flash"
 
