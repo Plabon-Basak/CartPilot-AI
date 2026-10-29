@@ -424,9 +424,12 @@ async def assistant_intent(request: IntentRequest):
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error))
     except RuntimeError as error:
-        raise HTTPException(status_code=502, detail="Gemini API request failed.")
-    except Exception:
-        raise HTTPException(status_code=502, detail="Gemini API request failed.")
+        raise HTTPException(status_code=502, detail=str(error))
+    except Exception as error:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Unexpected error: {type(error).__name__}",
+        )
 
     try:
         parsed_json = _extract_json_from_text(response_text)

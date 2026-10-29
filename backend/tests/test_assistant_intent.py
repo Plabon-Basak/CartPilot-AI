@@ -36,6 +36,27 @@ def test_missing_gemini_api_key(mock_gen):
     mock_gen.side_effect = ValueError("Gemini API key is not configured.")
     response = client.post("/assistant/intent", json={"query": "laptop"})
     assert response.status_code == 400
+    assert response.json()["detail"] == "Gemini API key is not configured."
+
+
+@patch("main.generate_response")
+def test_gemini_runtime_error_returns_exception_message(mock_gen):
+    message = "Gemini API error 429: quota exceeded"
+    mock_gen.side_effect = RuntimeError(message)
+    response = client.post("/assistant/intent", json={"query": "laptop"})
+    assert response.status_code == 502
+    assert response.json()["detail"] == message
+
+
+@patch("main.generate_response")
+def test_unexpected_error_returns_only_exception_type(mock_gen):
+    mock_gen.side_effect = Exception("GEMINI_API_KEY=do-not-leak")
+    response = client.post("/assistant/intent", json={"query": "laptop"})
+    assert response.status_code == 502
+    detail = response.json()["detail"]
+    assert detail == "Unexpected error: Exception"
+    assert "GEMINI_API_KEY" not in detail
+    assert "do-not-leak" not in detail
 
 
 @patch("main.generate_response")
