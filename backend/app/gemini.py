@@ -32,7 +32,14 @@ async def generate_response(prompt: str) -> str:
         ]
     }
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    timeout = httpx.Timeout(
+        connect=15.0,
+        read=60.0,
+        write=15.0,
+        pool=15.0,
+    )
+
+    async with httpx.AsyncClient(timeout=timeout) as client:
         response = await client.post(url, headers=headers, json=payload)
 
     is_success = getattr(response, "is_success", None)
