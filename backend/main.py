@@ -1,5 +1,6 @@
 from decimal import Decimal
 import json
+import logging
 import re
 
 from fastapi import FastAPI, HTTPException, Query
@@ -9,13 +10,21 @@ from pydantic import BaseModel, Field, PrivateAttr
 
 from app.catalog import get_all_products, get_product_by_id, search_products
 from app.config import settings
-from app.gemini import generate_response
+from app.gemini import (
+    GEMINI_FAILURE_MESSAGE,
+    GEMINI_TIMEOUT_MESSAGE,
+    GeminiTimeoutError,
+    generate_response,
+)
 from app.paypal import (
     create_paypal_order,
     get_paypal_order,
     verify_paypal_approval,
     capture_paypal_order
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 app = FastAPI(
@@ -423,13 +432,24 @@ async def assistant_intent(request: IntentRequest):
         response_text = await generate_response(prompt)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error))
-    except RuntimeError as error:
-        raise HTTPException(status_code=502, detail=str(error))
-    except Exception as error:
+    except GeminiTimeoutError:
+        logger.warning("assistant_intent_gemini_timeout")
         raise HTTPException(
-            status_code=502,
-            detail=f"Unexpected error: {type(error).__name__}",
+            status_code=504,
+            detail=GEMINI_TIMEOUT_MESSAGE,
         )
+    except RuntimeError as error:
+        logger.warning(
+            "assistant_intent_gemini_failed exception=%s",
+            type(error).__name__,
+        )
+        raise HTTPException(status_code=502, detail=GEMINI_FAILURE_MESSAGE)
+    except Exception as error:
+        logger.warning(
+            "assistant_intent_unexpected_error exception=%s",
+            type(error).__name__,
+        )
+        raise HTTPException(status_code=502, detail=GEMINI_FAILURE_MESSAGE)
 
     try:
         parsed_json = _extract_json_from_text(response_text)
