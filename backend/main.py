@@ -171,6 +171,10 @@ _PRODUCT_TYPE_SYNONYMS = {
     "notebooks": "laptop",
     "smartphone": "smartphone",
     "smartphones": "smartphone",
+    "smartphone camera": "smartphone",
+    "smartphone cameras": "smartphone",
+    "camera phone": "smartphone",
+    "camera phones": "smartphone",
     "mobile phone": "smartphone",
     "mobile phones": "smartphone",
     "cell phone": "smartphone",
@@ -200,7 +204,42 @@ _PRODUCT_TYPE_SYNONYMS = {
     "charger": "charger",
     "chargers": "charger",
     "charging pad": "charger",
+    "smartphone charger": "charger",
+    "smartphone chargers": "charger",
+    "mobile phone charger": "charger",
+    "mobile phone chargers": "charger",
+    "phone charger": "charger",
+    "phone chargers": "charger",
+    "laptop charger": "charger",
+    "laptop chargers": "charger",
+    "camera charger": "charger",
+    "camera chargers": "charger",
+    "chair": "chair",
+    "chairs": "chair",
+    "office chair": "chair",
+    "office chairs": "chair",
+    "desk chair": "chair",
+    "desk chairs": "chair",
+    "ergonomic chair": "chair",
+    "ergonomic chairs": "chair",
+    "gaming chair": "chair",
+    "gaming chairs": "chair",
+    "smartphone case": "case",
+    "smartphone cases": "case",
+    "smartphone camera case": "case",
+    "smartphone camera cases": "case",
+    "camera phone case": "case",
+    "camera phone cases": "case",
+    "mobile phone case": "case",
+    "mobile phone cases": "case",
+    "cell phone case": "case",
+    "cell phone cases": "case",
     "phone case": "case",
+    "phone cases": "case",
+    "laptop case": "case",
+    "laptop cases": "case",
+    "camera case": "case",
+    "camera cases": "case",
     "case": "case",
     "cases": "case",
     "screen protector": "protector",
@@ -252,6 +291,7 @@ _PRODUCT_TYPE_NAME_PATTERNS = {
     "mouse": [r"\bmouse\b", r"\bmice\b"],
     "hub": [r"\bhub\b", r"\bhubs\b"],
     "charger": [r"\bchargers?\b"],
+    "chair": [r"\bchairs?\b"],
     "case": [r"\bcases?\b"],
     "protector": [r"\bprotectors?\b", r"\bscreen protector\b"],
     "t-shirt": [r"\bt[- ]?shirts?\b", r"\btees?\b"],
@@ -273,6 +313,7 @@ _PRODUCT_TYPE_TO_CATEGORY = {
     "monitor": "Computers and accessories",
     "hub": "Computers and accessories",
     "charger": "Mobile phones",
+    "chair": "Home and lifestyle",
     "case": "Mobile phones",
     "protector": "Mobile phones",
     "smartphone": "Mobile phones",
@@ -312,10 +353,11 @@ _CATEGORY_SYNONYMS = {
     "home essentials": "Home and lifestyle",
     "home": "Home and lifestyle",
     "lifestyle": "Home and lifestyle",
+    "furniture": "Home and lifestyle",
 }
 
 
-def _find_product_types(text: str) -> list[str]:
+def _find_product_type_mentions(text: str) -> list[tuple[int, int, str]]:
     text_lower = text.lower()
     candidates: list[tuple[int, int, str]] = []
     for phrase, product_type in _PRODUCT_TYPE_SYNONYMS.items():
@@ -324,7 +366,7 @@ def _find_product_types(text: str) -> list[str]:
             candidates.append((match.start(), match.end(), product_type))
     # Prefer longer phrases so "phone case" is treated as a case, not a phone.
     candidates.sort(key=lambda item: (-(item[1] - item[0]), item[0]))
-    found_types: list[str] = []
+    accepted_mentions: list[tuple[int, int, str]] = []
     accepted_spans: list[tuple[int, int]] = []
     for start, end, product_type in candidates:
         overlaps = any(
@@ -334,19 +376,86 @@ def _find_product_types(text: str) -> list[str]:
         if overlaps:
             continue
         accepted_spans.append((start, end))
+        accepted_mentions.append((start, end, product_type))
+    accepted_mentions.sort(key=lambda item: item[0])
+    return accepted_mentions
+
+
+def _find_product_types(text: str) -> list[str]:
+    found_types: list[str] = []
+    for _, _, product_type in _find_product_type_mentions(text):
         if product_type not in found_types:
             found_types.append(product_type)
     return found_types
 
 
-def _find_category(query: str, valid_categories: set[str]) -> str | None:
+_CLAUSE_BOUNDARY_PATTERN = re.compile(r"[,.;]|\band\b|\bor\b", re.IGNORECASE)
+_FEATURE_PREFIX_PATTERN = re.compile(
+    r"\b(?:with|for|has|having|featuring|includes|including|comes with|equipped with)\b",
+    re.IGNORECASE,
+)
+_QUALITY_SUFFIX_PATTERN = re.compile(
+    r"\b(?:good|great|excellent|quality|high[- ]resolution|better|best)\s*$",
+    re.IGNORECASE,
+)
+
+
+def _is_descriptive_product_mention(
+    text: str,
+    start: int,
+    has_primary_product: bool,
+) -> bool:
+    prefix = text[max(0, start - 60):start]
+    clause_start = 0
+    for match in _CLAUSE_BOUNDARY_PATTERN.finditer(prefix):
+        clause_start = match.end()
+    clause_prefix = prefix[clause_start:]
+
+    if _FEATURE_PREFIX_PATTERN.search(clause_prefix):
+        return True
+
+    return (
+        has_primary_product
+        and clause_start == 0
+        and bool(_QUALITY_SUFFIX_PATTERN.search(clause_prefix))
+    )
+
+
+def _select_primary_product_types(text: str) -> list[str]:
+    selected: list[str] = []
+    for start, _, product_type in _find_product_type_mentions(text):
+        if product_type in selected:
+            continue
+        if _is_descriptive_product_mention(text, start, bool(selected)):
+            continue
+        selected.append(product_type)
+
+    if not selected:
+        mentions = _find_product_type_mentions(text)
+        if mentions:
+            selected.append(mentions[0][2])
+
+    return selected
+
+
+def _find_category(
+    query: str,
+    valid_categories: set[str],
+    excluded_spans: list[tuple[int, int]] | None = None,
+) -> str | None:
     query_lower = query.lower()
+    excluded_spans = excluded_spans or []
     for phrase in sorted(_CATEGORY_SYNONYMS, key=len, reverse=True):
         category = _CATEGORY_SYNONYMS[phrase]
         if category not in valid_categories:
             continue
         pattern = r"(?<![a-z0-9])" + re.escape(phrase) + r"(?![a-z0-9])"
-        if re.search(pattern, query_lower):
+        for match in re.finditer(pattern, query_lower):
+            if any(
+                match.start() < span_end and match.end() > span_start
+                for span_start, span_end in excluded_spans
+            ):
+                continue
             return category
     return None
 
@@ -359,9 +468,25 @@ def _product_matches_types(product_name_lower: str, product_types: list[str]) ->
     return False
 
 
+def _get_categories_for_product_types(product_types: list[str]) -> set[str]:
+    categories: set[str] = set()
+    if not product_types:
+        return categories
+
+    for product in get_all_products():
+        product_name_lower = str(product.get("name", "")).lower()
+        if not _product_matches_types(product_name_lower, product_types):
+            continue
+        category = product.get("category")
+        if category:
+            categories.add(str(category))
+    return categories
+
+
 def _preserve_product_types(query: str, intent: ShoppingIntent) -> ShoppingIntent:
     found_types = _find_product_types(query)
-    intent._primary_product_types = found_types
+    primary_types = _select_primary_product_types(query)
+    intent._primary_product_types = primary_types
 
     if found_types:
         existing_keywords_lower = {k.lower() for k in intent.keywords if k}
@@ -372,17 +497,35 @@ def _preserve_product_types(query: str, intent: ShoppingIntent) -> ShoppingInten
                 existing_keywords_lower.add(product_type.lower())
         intent.keywords = merged_keywords
 
-    if intent.category is None:
-        valid_categories = _get_catalog_categories()
-        candidate_categories = {
-            _PRODUCT_TYPE_TO_CATEGORY[product_type]
-            for product_type in found_types
-            if _PRODUCT_TYPE_TO_CATEGORY.get(product_type) in valid_categories
-        }
-        if len(candidate_categories) == 1:
-            intent.category = candidate_categories.pop()
+    valid_categories = _get_catalog_categories()
+    product_type_spans = [
+        (start, end) for start, end, _ in _find_product_type_mentions(query)
+    ]
+    intent.category = None
+    if primary_types:
+        catalog_categories = _get_categories_for_product_types(primary_types)
+        if len(catalog_categories) == 1:
+            intent.category = catalog_categories.pop()
+        elif len(catalog_categories) > 1:
+            intent.category = _find_category(
+                query, valid_categories, product_type_spans
+            )
         else:
-            intent.category = _find_category(query, valid_categories)
+            static_categories = {
+                _PRODUCT_TYPE_TO_CATEGORY[product_type]
+                for product_type in primary_types
+                if _PRODUCT_TYPE_TO_CATEGORY.get(product_type) in valid_categories
+            }
+            if len(static_categories) == 1:
+                intent.category = static_categories.pop()
+            else:
+                intent.category = _find_category(
+                    query, valid_categories, product_type_spans
+                )
+    else:
+        intent.category = _find_category(
+            query, valid_categories, product_type_spans
+        )
 
     return intent
 
@@ -425,6 +568,10 @@ async def assistant_intent(request: IntentRequest):
         "min_ram_gb (number or null), max_ram_gb (number or null), min_storage_gb (number or null), "
         "max_storage_gb (number or null), storage_type (string or null), max_price (number or null), "
         "min_price (number or null), brand (string or null), currency (string, default USD), use_case (string or null). "
+        "category must be one of \"Electronics\", \"Computers and accessories\", \"Mobile phones\", "
+        "\"Clothing\", \"Home and lifestyle\", or null only if none applies. "
+        "Identify the main purchasable product. Treat camera quality, microphone quality, comfort, "
+        "lightweight, and programming as keywords or use_case, not as additional product types. "
         f"User query: {request.query}"
     )
 
@@ -494,7 +641,7 @@ async def assistant_intent(request: IntentRequest):
     if intent.brand:
         max_possible_score += 10
 
-    products = get_all_products()
+    products = get_all_products() if (primary_types or intent.category) else []
     matches = []
 
     for product in products:
@@ -513,13 +660,10 @@ async def assistant_intent(request: IntentRequest):
             reasons.append("Matches product type")
 
         if intent.category:
-            if product_category == intent.category:
-                reasons.append("Matches category")
-                score += 20
-            elif not primary_types:
-                meets_constraints = False
-            else:
-                score += 5
+            if product_category != intent.category:
+                continue
+            reasons.append("Matches category")
+            score += 20
 
         if intent.max_price is not None:
             try:
