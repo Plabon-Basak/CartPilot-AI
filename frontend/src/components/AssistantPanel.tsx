@@ -14,8 +14,8 @@ const ArrowIcon = () => (
 function AssistantPanel() {
   const suggestions = [
     "Laptop for university",
-    "Best headphones under $100",
-    "Everyday essentials",
+    "Best earbuds under $100",
+    "Wireless charger for my phone",
   ];
 
   const { addToCart } = useCart();
