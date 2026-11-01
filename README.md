@@ -178,40 +178,44 @@ For the live deployment, these values are configured to the Vercel frontend orig
 
 ```text
 CartPilot-AI/
-â”œâ”€â”€ .env.example                     # Backend environment template
-â”œâ”€â”€ README.md
-â”œâ”€â”€ docs/                            # Reserved for submission assets; currently empty
-â”œâ”€â”€ backend/
-â”‚   â”œâ”€â”€ .env.example
-â”‚   â”œâ”€â”€ requirements.txt
-â”‚   â”œâ”€â”€ main.py                      # FastAPI app, routes, intent matching and ranking
-â”‚   â”œâ”€â”€ app/
-â”‚   â”‚   â”œâ”€â”€ catalog.py               # Static 25-product demo catalog and search
-â”‚   â”‚   â”œâ”€â”€ config.py                # Environment-backed settings
-â”‚   â”‚   â”œâ”€â”€ gemini.py                # Gemini generateContent integration
-â”‚   â”‚   â””â”€â”€ paypal.py                # PayPal Sandbox integration
-â”‚   â””â”€â”€ tests/
-â”‚       â”œâ”€â”€ test_assistant_intent.py
-â”‚       â”œâ”€â”€ test_catalog.py
-â”‚       â”œâ”€â”€ test_catalog_api.py
-â”‚       â”œâ”€â”€ test_cors.py
-â”‚       â”œâ”€â”€ test_gemini.py
-â”‚       â”œâ”€â”€ test_intent_matching_regressions.py
-â”‚       â”œâ”€â”€ test_paypal.py
-â”‚       â”œâ”€â”€ test_product_type_preservation.py
-â”‚       â””â”€â”€ test_relevance_ranking.py
-â””â”€â”€ frontend/
-    â”œâ”€â”€ .env.development
-    â”œâ”€â”€ package.json
-    â”œâ”€â”€ package-lock.json
-    â”œâ”€â”€ index.html
-    â”œâ”€â”€ public/
-    â””â”€â”€ src/
-        â”œâ”€â”€ api/
-        â”œâ”€â”€ components/
-        â”œâ”€â”€ context/
-        â”œâ”€â”€ App.tsx
-        â””â”€â”€ main.tsx
+├── .env.example
+├── LICENSE
+├── README.md
+├── docs/
+│   └── (reserved for submission assets)
+│
+├── backend/
+│   ├── .env.example
+│   ├── requirements.txt
+│   ├── main.py
+│   ├── app/
+│   │   ├── catalog.py
+│   │   ├── config.py
+│   │   ├── gemini.py
+│   │   └── paypal.py
+│   └── tests/
+│       ├── test_assistant_intent.py
+│       ├── test_catalog.py
+│       ├── test_catalog_api.py
+│       ├── test_cors.py
+│       ├── test_gemini.py
+│       ├── test_intent_matching_regressions.py
+│       ├── test_paypal.py
+│       ├── test_product_type_preservation.py
+│       └── test_relevance_ranking.py
+│
+└── frontend/
+    ├── .env.development
+    ├── package.json
+    ├── package-lock.json
+    ├── index.html
+    ├── public/
+    └── src/
+        ├── api/
+        ├── components/
+        ├── context/
+        ├── App.tsx
+        └── main.tsx
 ```
 
 Generated folders such as `frontend/dist`, `frontend/node_modules`, `backend/.venv`, `__pycache__`, and `.pytest_cache` are intentionally excluded from version control.
