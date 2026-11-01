@@ -4,7 +4,7 @@
 
 CartPilot AI is a full-stack hackathon project that turns a plain-language shopping request into structured intent, ranked product recommendations, and a PayPal Sandbox checkout. Gemini extracts what the user is looking for; the backend applies deterministic filters and scoring against a fixed 25-product demo catalog, so every recommendation is explainable.
 
-[Live frontend](https://cartpilot-ai-two.vercel.app/) · [Backend health](https://cartpilot-ai-backend.onrender.com/health) · [API docs](https://cartpilot-ai-backend.onrender.com/docs) · [GitHub repository](https://github.com/Plabon-Basak/CartPilot-AI)
+[Live frontend](https://cartpilot-ai-two.vercel.app/) | [Backend health](https://cartpilot-ai-backend.onrender.com/health) | [API docs](https://cartpilot-ai-backend.onrender.com/docs) | [GitHub repository](https://github.com/Plabon-Basak/CartPilot-AI)
 
 > **PayPal Sandbox only:** CartPilot AI is a demonstration project. Checkout runs exclusively against PayPal Sandbox test accounts. No real money is charged, captured, or transferred.
 
@@ -14,7 +14,7 @@ CartPilot AI is a full-stack hackathon project that turns a plain-language shopp
 
 Shopping search usually requires users to translate a goal into the right keywords, filters, and product categories. CartPilot AI lets users describe the goal directly, for example:
 
-> “I need a laptop for university with 16GB RAM and a 512GB SSD under $1000.”
+> â€œI need a laptop for university with 16GB RAM and a 512GB SSD under $1000.â€
 
 The assistant extracts the relevant intent, the backend enforces hard constraints, and the UI explains why each product matched. The result is a transparent demo of AI-assisted commerce rather than a black-box recommendation feed.
 
@@ -56,7 +56,7 @@ The live frontend is deployed on Vercel and calls the FastAPI backend deployed o
 3. Gemini extracts structured intent; the backend validates it, filters the demo catalog, scores candidates, and returns match reasons.
 4. Add recommended or browsed products to the cart.
 5. Select **Checkout with PayPal** to create a PayPal Sandbox order.
-6. Approve the order on PayPal’s Sandbox checkout page.
+6. Approve the order on PayPalâ€™s Sandbox checkout page.
 7. Return to CartPilot AI, verify the approval, and explicitly select **Confirm Payment**.
 8. The cart is cleared after a `COMPLETED` capture.
 
@@ -131,7 +131,7 @@ Gemini is used for **intent extraction only**. It does not choose products, set 
 4. The backend validates the response with Pydantic and rejects malformed intent.
 5. The backend normalizes product-type synonyms and applies hard constraints against the static catalog.
 6. Candidate products receive deterministic scores and human-readable match reasons.
-7. Scores are normalized to `0–100`, sorted descending, and returned to the frontend.
+7. Scores are normalized to `0â€“100`, sorted descending, and returned to the frontend.
 
 The backend ignores any product IDs, prices, or product lists that Gemini might return. Recommendation behavior is implemented in `backend/main.py`; catalog data lives in `backend/app/catalog.py`.
 
@@ -146,7 +146,7 @@ CartPilot AI uses the PayPal REST API in Sandbox mode.
 1. The cart total is calculated in the browser.
 2. The frontend sends the amount to `POST /paypal/orders`.
 3. The backend obtains a PayPal OAuth token and creates a Sandbox order in `USD`.
-4. The backend returns PayPal’s approval URL.
+4. The backend returns PayPalâ€™s approval URL.
 5. The browser redirects to PayPal Sandbox for approval.
 6. PayPal redirects to the configured return or cancel URL.
 7. On return, the frontend calls `GET /paypal/orders/{order_id}/approval`.
@@ -178,40 +178,40 @@ For the live deployment, these values are configured to the Vercel frontend orig
 
 ```text
 CartPilot-AI/
-├── .env.example                     # Backend environment template
-├── README.md
-├── docs/                            # Reserved for submission assets; currently empty
-├── backend/
-│   ├── .env.example
-│   ├── requirements.txt
-│   ├── main.py                      # FastAPI app, routes, intent matching and ranking
-│   ├── app/
-│   │   ├── catalog.py               # Static 25-product demo catalog and search
-│   │   ├── config.py                # Environment-backed settings
-│   │   ├── gemini.py                # Gemini generateContent integration
-│   │   └── paypal.py                # PayPal Sandbox integration
-│   └── tests/
-│       ├── test_assistant_intent.py
-│       ├── test_catalog.py
-│       ├── test_catalog_api.py
-│       ├── test_cors.py
-│       ├── test_gemini.py
-│       ├── test_intent_matching_regressions.py
-│       ├── test_paypal.py
-│       ├── test_product_type_preservation.py
-│       └── test_relevance_ranking.py
-└── frontend/
-    ├── .env.development
-    ├── package.json
-    ├── package-lock.json
-    ├── index.html
-    ├── public/
-    └── src/
-        ├── api/
-        ├── components/
-        ├── context/
-        ├── App.tsx
-        └── main.tsx
+â”œâ”€â”€ .env.example                     # Backend environment template
+â”œâ”€â”€ README.md
+â”œâ”€â”€ docs/                            # Reserved for submission assets; currently empty
+â”œâ”€â”€ backend/
+â”‚   â”œâ”€â”€ .env.example
+â”‚   â”œâ”€â”€ requirements.txt
+â”‚   â”œâ”€â”€ main.py                      # FastAPI app, routes, intent matching and ranking
+â”‚   â”œâ”€â”€ app/
+â”‚   â”‚   â”œâ”€â”€ catalog.py               # Static 25-product demo catalog and search
+â”‚   â”‚   â”œâ”€â”€ config.py                # Environment-backed settings
+â”‚   â”‚   â”œâ”€â”€ gemini.py                # Gemini generateContent integration
+â”‚   â”‚   â””â”€â”€ paypal.py                # PayPal Sandbox integration
+â”‚   â””â”€â”€ tests/
+â”‚       â”œâ”€â”€ test_assistant_intent.py
+â”‚       â”œâ”€â”€ test_catalog.py
+â”‚       â”œâ”€â”€ test_catalog_api.py
+â”‚       â”œâ”€â”€ test_cors.py
+â”‚       â”œâ”€â”€ test_gemini.py
+â”‚       â”œâ”€â”€ test_intent_matching_regressions.py
+â”‚       â”œâ”€â”€ test_paypal.py
+â”‚       â”œâ”€â”€ test_product_type_preservation.py
+â”‚       â””â”€â”€ test_relevance_ranking.py
+â””â”€â”€ frontend/
+    â”œâ”€â”€ .env.development
+    â”œâ”€â”€ package.json
+    â”œâ”€â”€ package-lock.json
+    â”œâ”€â”€ index.html
+    â”œâ”€â”€ public/
+    â””â”€â”€ src/
+        â”œâ”€â”€ api/
+        â”œâ”€â”€ components/
+        â”œâ”€â”€ context/
+        â”œâ”€â”€ App.tsx
+        â””â”€â”€ main.tsx
 ```
 
 Generated folders such as `frontend/dist`, `frontend/node_modules`, `backend/.venv`, `__pycache__`, and `.pytest_cache` are intentionally excluded from version control.
@@ -512,7 +512,9 @@ npm run build
 
 ## License
 
-No LICENSE file is currently included in this repository. A license decision is needed before the project is redistributed or reused outside the hackathon submission.
+CartPilot AI is licensed under the [MIT License](LICENSE).
+
+Copyright (c) 2026 Plabon Basak.
 
 ---
 
